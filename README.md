@@ -11,7 +11,14 @@ promotion:
   action: accept
   cookie: * your cookie here *
   username: * your username here *
-  promotion: free/twoupfree/halfdown/twouphalfdown/thirtypercent/none
+  promotion: 
+    - free
+    - twoup
+    - halfdown
+    - twoupfree
+    - twouphalfdown
+    - thirtypercent
+    - none
 ```
 - run flexget
 
@@ -32,7 +39,9 @@ tasks:
       url: ***
       other_fields: [link]
     promotion: 
-      promotion: free
+      promotion: 
+        - free
+        - twoupfree
       action: accept
       username: ***
       cookie: ***
@@ -46,6 +55,7 @@ by adding `not_hr: yes` to configuration file, it would accept only not in h&r m
 remember this config is not available for other sites!
 
 # updates
+- 2020-01-03 support multi promotions
 - 2019-06-30 add ourbits's h&r detection 
 - 2019-07-15 add ttg's h&r detection 
 # warning
@@ -59,4 +69,5 @@ so, use this plugin **at your own risk!**
 
 # to-do list
 - add crush handler
-- make promotion field an array
+- ~~make promotion field an array~~
+- add settings for how many seeds to check each time

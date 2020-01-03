@@ -6,6 +6,7 @@ import logging
 
 from flexget import plugin
 from flexget.event import event
+from flexget.config_schema import one_or_more
 
 import requests
 from bs4 import BeautifulSoup
@@ -44,12 +45,10 @@ class Filter_Promotion(object):
 		          'username': {
 			          'type': 'string',
 		          },
-		          'promotion': {
-			          "oneOf": [{"type": "array"}, {"type": "string"}],
-			          # 'type': 'array',
-			          # 'enum': ['free', 'twoupfree', 'halfdown', 'twouphalfdown', 'thirtypercent', 'none'],
-			          'default': ['free'],
-		          },
+		          'promotion': one_or_more({
+					  'type': 'string', 
+					  'enum': ['free', 'twoup', 'halfdown', 'twoupfree', 'twouphalfdown', 'thirtypercent', 'none']
+				  }),
 		          'not_hr': {
 			          'type': 'boolean',
 			          'enum': [True, False],
@@ -79,13 +78,14 @@ class Filter_Promotion(object):
 		for entry in task.entries:
 			link = entry.get('link')
 			if config['action'] == 'accept':
-				if self.detect_promotion_status(link, config):
-					entry.accept('Entry `%s` is `%s`' % (entry['title'], config['promotion']), remember=True)
+				flag, promo = self.detect_promotion_status(link, config)
+				if flag:
+					entry.accept('Entry `%s` is `%s`' % (entry['title'], promo), remember=True)
 				else:
-					entry.reject('Entry `%s` is not `%s`' % (entry['title'], config['promotion']))
+					entry.reject('Entry `%s` is `%s` not mach' % (entry['title'], promo))
 
 	def detect_promotion_status(self, link, config):
-		log.verbose('start to detect %s promotion status' % link)
+		log.info('start to detect %s promotion status' % link)
 
 		cookie = config['cookie']
 		username = config['username']
@@ -101,7 +101,7 @@ class Filter_Promotion(object):
 			r.raise_for_status()
 			r.encoding = r.apparent_encoding
 			response = r.text
-			log.verbose('get page succeed')
+			log.info('get page succeed')
 		except:
 			log.critical('get page failed, please check connection')
 			try:
@@ -110,11 +110,11 @@ class Filter_Promotion(object):
 				log.info(r.status_code)
 			finally:
 				return False
-
+ 
 		# assert login status
 		try:
 			assert username in response
-			log.verbose('cookie is valid')
+			log.info('cookie is valid')
 		except:
 			log.critical('cookie is expired or username not right, response is logged')
 			log.info(response)
@@ -124,7 +124,8 @@ class Filter_Promotion(object):
 		try:
 			assert '没有该ID的种子' not in response
 			assert '你没有该权限！' not in response
-		# log.verbose('torrent id is valid')
+		
+		# log.info('torrent id is valid')
 		except:
 			log.critical('torrent id is not valid, torrent {} does not exist'.format(link))
 			log.info(response)
@@ -153,10 +154,12 @@ class Filter_Promotion(object):
 			return False
 
 		# return accept or reject according to config['promotion']
-		if details_dict['promotion'] == config['promotion']:
-			return True
-		else:
-			return False
+		for each in config['promotion']:
+			if details_dict['promotion'] == each:
+				return True, details_dict['promotion']
+		
+		return False, details_dict['promotion']
+
 
 	def analyze_hdc_detail(self, response):
 		convert = {
@@ -171,10 +174,10 @@ class Filter_Promotion(object):
 		promotion_element = topic_element.img
 		if promotion_element:
 			promotion = convert[promotion_element['alt']]
-			log.verbose('torrent promotion status is {}'.format(promotion))
+			log.info('torrent promotion status is {}'.format(promotion))
 			return {'promotion': promotion}
 		else:
-			log.verbose('torrent has no promotion')
+			log.info('torrent has no promotion')
 			return {'promotion': 'none'}
 
 	def analyze_nexusphp_detail(self, response):
@@ -183,10 +186,10 @@ class Filter_Promotion(object):
 		promotion_element = topic_element.b
 		if promotion_element:
 			promotion = promotion_element.font['class'][0]
-			log.verbose('torrent promotion status is {}'.format(promotion))
+			log.info('torrent promotion status is {}'.format(promotion))
 			return {'promotion': promotion}
 		else:
-			log.verbose('torrent has no promotion')
+			log.info('torrent has no promotion')
 			return {'promotion': 'none'}
 
 	def analyze_byr_detail(self, response):
@@ -195,10 +198,10 @@ class Filter_Promotion(object):
 		promotion_element = topic_element.b
 		if promotion_element:
 			promotion = promotion_element.font['class'][0]
-			log.verbose('torrent promotion status is {}'.format(promotion))
+			log.info('torrent promotion status is {}'.format(promotion))
 			return {'promotion': promotion}
 		else:
-			log.verbose('torrent has no promotion')
+			log.info('torrent has no promotion')
 			return {'promotion': 'none'}
 
 	def analyze_tju_detail(self, response):
@@ -207,10 +210,10 @@ class Filter_Promotion(object):
 		promotion_element = topic_element.font
 		if promotion_element:
 			promotion = promotion_element['class'][0]
-			log.verbose('torrent promotion status is {}'.format(promotion))
+			log.info('torrent promotion status is {}'.format(promotion))
 			return {'promotion': promotion}
 		else:
-			log.verbose('torrent has no promotion')
+			log.info('torrent has no promotion')
 			return {'promotion': 'none'}
 
 	def analyze_ob_detail(self, response):
@@ -221,18 +224,18 @@ class Filter_Promotion(object):
 		promotion_element = topic_element.b
 		if promotion_element:
 			promotion = promotion_element.font['class'][0]
-			log.verbose('torrent promotion status is {}'.format(promotion))
+			log.info('torrent promotion status is {}'.format(promotion))
 			details_dict['promotion'] = promotion
 		else:
-			log.verbose('torrent has no promotion')
+			log.info('torrent has no promotion')
 			details_dict['promotion'] = 'none'
 
 		hr_element = topic_element.img
 		if hr_element:
-			log.verbose('torrent is h&r')
+			log.info('torrent is h&r')
 			details_dict['is_hr'] = True
 		else:
-			log.verbose('torrent is not h&r')
+			log.info('torrent is not h&r')
 			details_dict['is_hr'] = False
 
 		return details_dict
@@ -250,10 +253,10 @@ class Filter_Promotion(object):
 		promotion_element = topic_element.span.img
 		if promotion_element:
 			promotion = convert[promotion_element['alt']]
-			log.verbose('torrent promotion status is {}'.format(promotion))
+			log.info('torrent promotion status is {}'.format(promotion))
 			return {'promotion': promotion}
 		else:
-			log.verbose('torrent has no promotion')
+			log.info('torrent has no promotion')
 			return {'promotion': 'none'}
 
 	def analyze_ttg_detail(self, response):
@@ -270,21 +273,21 @@ class Filter_Promotion(object):
 			promotion_raw = re.findall(r'.*pic/ico_(.*).gif', promotion_element[0]['src'])[0]
 			try:
 				promotion = convert[promotion_raw]
-				log.verbose('torrent promotion status is {}'.format(promotion))
+				log.info('torrent promotion status is {}'.format(promotion))
 			except:
 				promotion = ''
 				log.warning('torrent promotion status is {}, unsupported'.format(promotion_raw))
 			details_dict['promotion'] = promotion
 		else:
-			log.verbose('torrent has no promotion')
+			log.info('torrent has no promotion')
 			details_dict['promotion'] = 'none'
 
 		hr_element = soup.find_all('img', alt='Hit & Run')
 		if hr_element:
-			log.verbose('torrent is h&r')
+			log.info('torrent is h&r')
 			details_dict['is_hr'] = True
 		else:
-			log.verbose('torrent is not h&r')
+			log.info('torrent is not h&r')
 			details_dict['is_hr'] = False
 
 		return details_dict
@@ -302,10 +305,10 @@ class Filter_Promotion(object):
 		promotion_element = topic_element.img
 		if promotion_element:
 			promotion = convert[promotion_element['alt']]
-			log.verbose('torrent promotion status is {}'.format(promotion))
+			log.info('torrent promotion status is {}'.format(promotion))
 			return {'promotion': promotion}
 		else:
-			log.verbose('torrent has no promotion')
+			log.info('torrent has no promotion')
 			return {'promotion': 'none'}
 
 
