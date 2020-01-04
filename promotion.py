@@ -54,6 +54,10 @@ class Filter_Promotion(object):
 			          'enum': [True, False],
 			          'default': False,
 		          },
+				  'amount': {
+			          'type': 'integer',
+			          'default': 10,
+		          },
 	          },
 	          }
 
@@ -65,24 +69,38 @@ class Filter_Promotion(object):
 			return False
 
 		# check some details first
-		##check entry's link field
+		# `amount` range from 1 to 100
+		if (config['amount']<1 or config['amount']>100):
+			log.critical('amount out of range. [1,100]')
+			return False
+		
+		# check entry's link field
 		if not task.entries[0].get('link'):
 			log.critical('link not found, plz add "other_fields: [link]" to rss plugin config')
 			return False
+		
 		##`not_hr` is only available for certain sites
 		if config['not_hr']:
 			if not re.findall('ourbits|totheglory', task.entries[0].get('link')):
-				log.critical('`not_hr` parameter is not available for this site')
+				log.critical('"not_hr" parameter is not available for this site')
 				return False
 
+		# check amount one time. DOSE NOT support multi threads now
+		seed_amount = 0
 		for entry in task.entries:
-			link = entry.get('link')
-			if config['action'] == 'accept':
-				flag, promo = self.detect_promotion_status(link, config)
-				if flag:
-					entry.accept('Entry `%s` is `%s`' % (entry['title'], promo), remember=True)
-				else:
-					entry.reject('Entry `%s` is `%s` not mach' % (entry['title'], promo))
+			seed_amount += 1
+			if seed_amount > config['amount']:
+				entry.reject('reach max seed amount [%d] one time.' % (config['amount']))
+			else:
+				link = entry.get('link')
+				if config['action'] == 'accept':
+					flag, promo = self.detect_promotion_status(link, config)
+					if flag:
+						entry.accept('promotion is [%s]' % (promo), remember=True)
+						#entry.accept('Entry `%s` is `%s`' % (entry['title'], promo), remember=True)
+					else:
+						entry.reject('promotion [%s] not mach' % (promo))
+						#entry.reject('Entry `%s` is `%s` not mach' % (entry['title'], promo))
 
 	def detect_promotion_status(self, link, config):
 		log.info('start to detect %s promotion status' % link)
@@ -92,16 +110,17 @@ class Filter_Promotion(object):
 
 		# get detail page
 		headers = {
-			'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+			'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36',
 			'accept-encoding': 'gzip, deflate',
 			'cookie': cookie,
 		}
+		
 		try:
 			r = requests.get(link, headers=headers, timeout=30)
 			r.raise_for_status()
 			r.encoding = r.apparent_encoding
 			response = r.text
-			log.info('get page succeed')
+			#log.info('get page succeed')
 		except:
 			log.critical('get page failed, please check connection')
 			try:
@@ -114,7 +133,7 @@ class Filter_Promotion(object):
 		# assert login status
 		try:
 			assert username in response
-			log.info('cookie is valid')
+			#log.info('cookie is valid')
 		except:
 			log.critical('cookie is expired or username not right, response is logged')
 			log.info(response)
