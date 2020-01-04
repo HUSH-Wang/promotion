@@ -19,6 +19,8 @@ promotion:
     - twouphalfdown
     - thirtypercent
     - none
+  amount: 10 # how many seeds to check one time
+
 ```
 - run flexget
 
@@ -42,6 +44,7 @@ tasks:
       promotion: 
         - free
         - twoupfree
+      amount: 10
       action: accept
       username: ***
       cookie: ***
@@ -55,9 +58,11 @@ by adding `not_hr: yes` to configuration file, it would accept only not in h&r m
 remember this config is not available for other sites!
 
 # updates
-- 2020-01-03 support multi promotions
 - 2019-06-30 add ourbits's h&r detection 
-- 2019-07-15 add ttg's h&r detection 
+- 2019-07-15 add ttg's h&r detection
+- 2020-01-03 support multi promotions 
+- 2020-01-04 add settings for seed amount to check one time
+
 # warning
 only tested for the following sites: <del>HDChina</del> TJUPT HDSky NYPT NPUPT SSD Ourbits BYRBT MTeam TTG
 
@@ -70,4 +75,6 @@ so, use this plugin **at your own risk!**
 # to-do list
 - add crush handler
 - ~~make promotion field an array~~
-- add settings for how many seeds to check each time
+- ~~add settings for how many seeds to check each time~~
+- deal better with net connection failure
+- use multi threads to accelerate checking promotion speed
