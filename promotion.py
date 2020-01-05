@@ -27,8 +27,15 @@ class Filter_Promotion(object):
 			  action: accept
 			  cookie: * your cookie here *
 			  username: * your username here *
-			  promotion: free/twoupfree/halfdown/twouphalfdown/thirtypercent/none
+			  promotion: 
+			  	- free
+				- twoupfree
+				- halfdown
+				- twouphalfdown
+				- thirtypercent
+				- none
 			  not_hr: yes [optional]
+			  amoung: 10 [optional]
 
 	"""
 
@@ -128,7 +135,7 @@ class Filter_Promotion(object):
 			except:
 				log.info(r.status_code)
 			finally:
-				return False
+				return False, 'NetErr'
  
 		# assert login status
 		try:
@@ -137,7 +144,7 @@ class Filter_Promotion(object):
 		except:
 			log.critical('cookie is expired or username not right, response is logged')
 			log.info(response)
-			return False
+			return False, 'NetErr'
 
 		# assert torrent id
 		try:
@@ -148,7 +155,7 @@ class Filter_Promotion(object):
 		except:
 			log.critical('torrent id is not valid, torrent {} does not exist'.format(link))
 			log.info(response)
-			return False
+			return False, 'NetErr'
 
 		# get details_dict
 		if "hdchina.org" in link:
@@ -170,7 +177,7 @@ class Filter_Promotion(object):
 
 		# process h&r
 		if config['not_hr'] and details_dict['is_hr']:
-			return False
+			return False, 'HRErr'
 
 		# return accept or reject according to config['promotion']
 		for each in config['promotion']:
